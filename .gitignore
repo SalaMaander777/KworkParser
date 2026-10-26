@@ -37,3 +37,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+### Project ###
+debug/
+.idea/vcs.xml
+.idea/workspace.xml
+.env

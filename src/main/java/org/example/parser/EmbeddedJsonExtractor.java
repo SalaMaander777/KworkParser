@@ -15,12 +15,14 @@ public final class EmbeddedJsonExtractor {
     }
 
     public static String extract(String html, String variableName) throws KworkParsingException {
-        int varPos = html.indexOf(variableName + "=");
-        if (varPos == -1) {
+        java.util.regex.Matcher assignment = java.util.regex.Pattern
+                .compile(java.util.regex.Pattern.quote(variableName) + "\\s*=\\s*")
+                .matcher(html);
+        if (!assignment.find()) {
             throw new KworkParsingException("Переменная '" + variableName + "' не найдена в HTML-странице");
         }
 
-        int start = html.indexOf('{', varPos);
+        int start = html.indexOf('{', assignment.end());
         if (start == -1) {
             throw new KworkParsingException("После '" + variableName + "=' не найден открывающий '{'");
         }

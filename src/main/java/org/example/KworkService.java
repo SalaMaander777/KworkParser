@@ -11,19 +11,24 @@ import org.example.parser.fetcher.KworkHtmlFetcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Публичная точка входа модуля.
  *
- * Главный баг исходного parseAllWorks: страница скачивалась ОДИН раз
- * (sendRequest(1)), а затем в цикле pagesAmount раз парсился один и тот же
- * HTML — то есть реально обходилась только первая страница, а результат
- * даже не возвращался из метода. Здесь это исправлено: на каждой итерации
- * действительно запрашивается своя страница, между запросами есть пауза
- * (чтобы не улететь в бан по частоте запросов), а метод возвращает
- * агрегированный список.
+ * Обходит все страницы каталога заказов: первая страница определяет число
+ * страниц, остальные скачиваются в ограниченном пуле потоков
+ * ({@link KworkConfig#concurrency()}), причём каждый поток выдерживает паузу
+ * {@link KworkConfig#delayBetweenRequests()} перед запросом, чтобы не улететь
+ * в бан по частоте запросов. Результат сохраняется в БД.
  */
 public class KworkService {
 
@@ -32,13 +37,15 @@ public class KworkService {
     private final KworkHtmlFetcher fetcher;
     private final KworkResponseMapper mapper;
     private final KworkConfig config;
-
+    /** Если задан, HTML первой страницы сохраняется в эту папку (для отладки). */
+    private final Path debugDir;
 
     public KworkService(KworkHtmlFetcher fetcher, KworkResponseMapper mapper, KworkConfig config) {
         this.fetcher = fetcher;
         this.mapper = mapper;
         this.config = config;
-
+        String dir = Env.get("KWORK_DEBUG_DIR", null);
+        this.debugDir = dir == null ? null : Path.of(dir);
     }
 
     public static KworkService withDefaults() {
@@ -47,27 +54,66 @@ public class KworkService {
     }
 
     /**
-     * Обходит все страницы каталога заказов и возвращает объединённый список.
+     * Обходит все страницы каталога, сохраняет заказы в БД и возвращает их.
+     * Страницы, которые не удалось получить, логируются и пропускаются.
      */
-    public List<KworkEntity> fetchAllKworks() throws KworkParsingException {
-
-        String firstPageHtml = fetcher.fetchPage(1);
-        PageResult firstPage = mapper.map(firstPageHtml, 1);
-        List<KworkEntity> allKworks = new ArrayList<>(firstPage.kworks());
-
+    public List<KworkEntity> fetchAllKworks() {
+        PageResult firstPage = getFirstPageResult();
         int lastPage = firstPage.lastPage();
         log.info("Всего страниц пагинации: {}", lastPage);
+        List<KworkEntity> kworks = new ArrayList<>(firstPage.kworks());
 
-        for (int page = 2; page <= lastPage; page++) {
-            sleepBetweenRequests();
-            String html = fetcher.fetchPage(page);
-            PageResult result = mapper.map(html, page);
-            allKworks.addAll(result.kworks());
-            log.info("Страница {}/{}: получено {} заказов", page, lastPage, result.kworks().size());
+        List<CompletableFuture<PageResult>> futures = new ArrayList<>();
+        int failed = 0;
+        ExecutorService executor = Executors.newFixedThreadPool(config.concurrency());
+        try {
+            for (int page = 2; page <= lastPage; page++) {
+                int currentPage = page;
+                futures.add(CompletableFuture
+                        .supplyAsync(() -> {
+                            sleepBetweenRequests();
+                            return mapper.map(fetcher.fetchPage(currentPage), currentPage);
+                        }, executor)
+                        .exceptionally(ex -> {
+                            log.error("Ошибка на странице {}: {}", currentPage, ex.toString());
+                            return null;
+                        }));
+            }
+            for (CompletableFuture<PageResult> future : futures) {
+                PageResult result = future.join();
+                if (result == null) {
+                    failed++;
+                    continue;
+                }
+                kworks.addAll(result.kworks());
+            }
+        } finally {
+            executor.shutdown();
         }
 
-        KworkRepository.saveAll(allKworks);
-        return allKworks;
+        if (failed > 0) {
+            log.warn("Не удалось получить {} из {} страниц", failed, lastPage - 1);
+        }
+        log.info("Получено заказов: {}", kworks.size());
+        KworkRepository.saveAll(kworks);
+        return kworks;
+    }
+
+    private PageResult getFirstPageResult() {
+        String firstPageHtml = fetcher.fetchPage(1);
+        if (debugDir != null) {
+            saveHtml(firstPageHtml, debugDir.resolve("kwork-page-1.html"));
+        }
+        return mapper.map(firstPageHtml, 1);
+    }
+
+    private void saveHtml(String html, Path path) {
+        try {
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, html, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.warn("Не удалось сохранить HTML в {}", path, e);
+        }
     }
 
     private void sleepBetweenRequests() {

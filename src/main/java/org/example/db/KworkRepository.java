@@ -8,6 +8,9 @@ import java.util.List;
 
 public class KworkRepository {
 
+    /** Должен совпадать с hibernate.jdbc.batch_size в hibernate.cfg.xml. */
+    private static final int BATCH_SIZE = 30;
+
     public static void saveKwork(KworkEntity kwork){
         try(Session session = HibernateUtil.getSessionFactory().openSession()){
             Transaction tx = session.beginTransaction();
@@ -30,14 +33,14 @@ public class KworkRepository {
         try(Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction tx = session.beginTransaction();
             try {
-                int batchSize = 12;
                 for (int i = 0; i < allKworks.size(); i++){
-                    session.persist(allKworks.get(i));
-                    if (i % batchSize == 0 && i > 0){
+                    session.merge(allKworks.get(i));
+                    if ((i + 1) % BATCH_SIZE == 0){
                         session.flush();
                         session.clear();
                     }
                 }
+                tx.commit();
             } catch (Exception e){
                 tx.rollback();
                 throw e;

@@ -36,8 +36,8 @@ public class JsoupKworkHtmlFetcher implements KworkHtmlFetcher {
                 return Jsoup.connect(url)
                         .userAgent(config.userAgent())
                         .timeout((int) config.requestTimeout().toMillis())
-                        .get()
-                        .toString();
+                        .execute()
+                        .body();
             } catch (IOException e) {
                 lastError = e;
                 log.warn("Не удалось получить страницу {} (попытка {}/{}): {}",

@@ -5,7 +5,7 @@ package org.example.parser;
  * Позволяет вызывающему коду ловить именно ошибки парсера Kwork,
  * не пряча под одной и той же catch-веткой сетевые и логические баги.
  */
-public class KworkParsingException extends Exception {
+public class KworkParsingException extends RuntimeException {
 
     public KworkParsingException(String message) {
         super(message);
