@@ -1,5 +1,8 @@
 package org.example.parser;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Утилита для вытаскивания JSON-литерала вида `window.stateData = {...}`
  * из отдаваемого сервером HTML. Алгоритм балансировки скобок из исходника
@@ -15,8 +18,8 @@ public final class EmbeddedJsonExtractor {
     }
 
     public static String extract(String html, String variableName) throws KworkParsingException {
-        java.util.regex.Matcher assignment = java.util.regex.Pattern
-                .compile(java.util.regex.Pattern.quote(variableName) + "\\s*=\\s*")
+        Matcher assignment = Pattern
+                .compile(Pattern.quote(variableName) + "\\s*=\\s*")
                 .matcher(html);
         if (!assignment.find()) {
             throw new KworkParsingException("Переменная '" + variableName + "' не найдена в HTML-странице");
