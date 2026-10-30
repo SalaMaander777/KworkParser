@@ -16,4 +16,4 @@ ENV SCRAPE_INTERVAL_MINUTES=1 \
     KWORK_CONCURRENCY=4 \
     KWORK_DELAY_MS=800
 
-ENTRYPOINT ["java", "-jar", "/app/kwork-parser.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/kwork-parser.jar"]

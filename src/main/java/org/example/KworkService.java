@@ -16,10 +16,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Публичная точка входа модуля.
@@ -94,9 +97,13 @@ public class KworkService {
         if (failed > 0) {
             log.warn("Не удалось получить {} из {} страниц", failed, lastPage - 1);
         }
-        log.info("Получено заказов: {}", kworks.size());
-        KworkRepository.saveAll(kworks);
-        return kworks;
+        // пока идёт обход, новые заказы сдвигают страницы, и один заказ может прийти дважды
+        List<KworkEntity> unique = new ArrayList<>(
+                kworks.stream().collect(Collectors.toMap(
+                        KworkEntity::getId, Function.identity(), (a, b) -> b, LinkedHashMap::new)).values());
+        log.info("Получено заказов: {} (уникальных: {})", kworks.size(), unique.size());
+        KworkRepository.saveAll(unique);
+        return unique;
     }
 
     private PageResult getFirstPageResult() {
@@ -121,6 +128,8 @@ public class KworkService {
             Thread.sleep(config.delayBetweenRequests().toMillis());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            // не отправляем запрос после прерывания (остановка приложения)
+            throw new KworkParsingException("Обход прерван", e);
         }
     }
 }

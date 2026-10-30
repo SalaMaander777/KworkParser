@@ -59,6 +59,11 @@ public class KworkResponseMapper {
 
         List<KworkEntity> kworks = new ArrayList<>();
         for (JsonNode node : wantsArray) {
+            // без id merge записал бы мусорную строку с id=0
+            if (!node.path("id").canConvertToLong() || node.path("id").asLong() == 0) {
+                log.warn("Страница {}: заказ без id пропущен", requestedPage);
+                continue;
+            }
             kworks.add(toEntity(node, requestedPage));
         }
 
@@ -74,8 +79,8 @@ public class KworkResponseMapper {
         entity.setName(node.path("name").asText(null));
         entity.setDescription(node.path("description").asText(null));
         entity.setPriceLimit(parseBigDecimal(node.path("priceLimit"), page, node));
-        entity.setCategoryId(parseLong(node.path("category_id"), page, node));
-        entity.setMaxDays(parseInteger(node.path("max_days"), page, node));
+        entity.setCategoryId(parseLong(node.path("category_id"), "category_id", page, node));
+        entity.setMaxDays(parseInteger(node.path("max_days"), "max_days", page, node));
         entity.setDateCreate(parseDateTime(node.path("date_create"), page, node));
         entity.setUsername(user.path("username").asText(null));
         entity.setUserProfileUrl(node.path("wantUserGetProfileUrl").asText(null));
@@ -99,7 +104,7 @@ public class KworkResponseMapper {
         }
     }
 
-    private Long parseLong(JsonNode field, int page, JsonNode node) {
+    private Long parseLong(JsonNode field, String fieldName, int page, JsonNode node) {
         if (field.isMissingNode() || field.isNull()) {
             return null;
         }
@@ -113,13 +118,13 @@ public class KworkResponseMapper {
         try {
             return Long.parseLong(raw.trim());
         } catch (NumberFormatException e) {
-            log.warn("Страница {}: не удалось распарсить category_id='{}' (id={})",
-                    page, raw, node.path("id").asText());
+            log.warn("Страница {}: не удалось распарсить {}='{}' (id={})",
+                    page, fieldName, raw, node.path("id").asText());
             return null;
         }
     }
 
-    private Integer parseInteger(JsonNode field, int page, JsonNode node) {
+    private Integer parseInteger(JsonNode field, String fieldName, int page, JsonNode node) {
         if (field.isMissingNode() || field.isNull()) {
             return null;
         }
@@ -133,8 +138,8 @@ public class KworkResponseMapper {
         try {
             return Integer.parseInt(raw.trim());
         } catch (NumberFormatException e) {
-            log.warn("Страница {}: не удалось распарсить max_days='{}' (id={})",
-                    page, raw, node.path("id").asText());
+            log.warn("Страница {}: не удалось распарсить {}='{}' (id={})",
+                    page, fieldName, raw, node.path("id").asText());
             return null;
         }
     }
