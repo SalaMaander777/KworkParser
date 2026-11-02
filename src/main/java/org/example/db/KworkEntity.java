@@ -3,6 +3,7 @@ package org.example.db;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -32,15 +33,15 @@ public class KworkEntity {
 
     // Служебные поля жизненного цикла заказа. Пишутся только SQL-upsert'ом в KworkRepository
     // (значения now() берутся с часов БД), поэтому Hibernate их не вставляет и не обновляет.
-    @Column(name = "first_seen_at", columnDefinition = "timestamp default now()", insertable = false, updatable = false)
-    private LocalDateTime firstSeenAt;
-    @Column(name = "last_seen_at", columnDefinition = "timestamp default now()", insertable = false, updatable = false)
-    private LocalDateTime lastSeenAt;
+    @Column(name = "first_seen_at", columnDefinition = "timestamptz default now()", insertable = false, updatable = false)
+    private Instant firstSeenAt;
+    @Column(name = "last_seen_at", columnDefinition = "timestamptz default now()", insertable = false, updatable = false)
+    private Instant lastSeenAt;
     /** false — заказ пропал с сайта; бот такие заказы не рассылает. */
     @Column(name = "is_active", nullable = false, columnDefinition = "boolean not null default true", insertable = false, updatable = false)
     private boolean active = true;
-    @Column(name = "closed_at", insertable = false, updatable = false)
-    private LocalDateTime closedAt;
+    @Column(name = "closed_at", columnDefinition = "timestamptz", insertable = false, updatable = false)
+    private Instant closedAt;
 
     public KworkEntity(){
 
@@ -126,11 +127,11 @@ public class KworkEntity {
         this.kworkCount = kworkCount;
     }
 
-    public LocalDateTime getFirstSeenAt() {
+    public Instant getFirstSeenAt() {
         return firstSeenAt;
     }
 
-    public LocalDateTime getLastSeenAt() {
+    public Instant getLastSeenAt() {
         return lastSeenAt;
     }
 
@@ -138,7 +139,7 @@ public class KworkEntity {
         return active;
     }
 
-    public LocalDateTime getClosedAt() {
+    public Instant getClosedAt() {
         return closedAt;
     }
 
