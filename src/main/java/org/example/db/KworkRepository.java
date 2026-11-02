@@ -5,7 +5,7 @@ import org.hibernate.Transaction;
 
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -84,9 +84,9 @@ public class KworkRepository {
     }
 
     /** Текущее время БД: от него отсчитывается «виден ли заказ в этом обходе». */
-    public static LocalDateTime dbNow(){
+    public static Instant dbNow(){
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            return session.createNativeQuery("SELECT now()::timestamp", LocalDateTime.class).getSingleResult();
+            return session.createNativeQuery("SELECT now()", Instant.class).getSingleResult();
         }
     }
 
@@ -95,7 +95,7 @@ public class KworkRepository {
      * Вызывать только после полного успешного обхода каталога.
      * @return сколько заказов закрыто
      */
-    public static int deactivateMissing(LocalDateTime since){
+    public static int deactivateMissing(Instant since){
         int[] result = new int[1];
         inTransaction(session -> result[0] = session.createNativeMutationQuery("""
                 UPDATE kwork SET is_active = false, closed_at = now()

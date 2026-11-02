@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
@@ -93,7 +93,7 @@ public class KworkService {
      * @return true, если обход был полным (все страницы каталога получены без ошибок)
      */
     private boolean crawl(int maxPages) {
-        LocalDateTime crawlStart = KworkRepository.dbNow();
+        Instant crawlStart = KworkRepository.dbNow();
         PageResult firstPage = getFirstPageResult();
         int lastPage = firstPage.lastPage();
         int pages = Math.min(lastPage, maxPages);
@@ -152,7 +152,7 @@ public class KworkService {
      * подозрительно мало заказов (сайт отдал заглушку/капчу, часть каталога не отдалась),
      * ничего не трогаем.
      */
-    private void closeMissing(int seen, LocalDateTime crawlStart) {
+    private void closeMissing(int seen, Instant crawlStart) {
         long activeBefore = KworkRepository.countActive();
         if (activeBefore > MIN_ACTIVE_FOR_GUARD && seen < activeBefore * minSeenRatio) {
             log.warn("Закрытие пропавших пропущено: в обходе {} заказов при {} активных в базе", seen, activeBefore);
