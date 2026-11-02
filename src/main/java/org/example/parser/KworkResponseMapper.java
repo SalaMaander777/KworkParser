@@ -82,6 +82,7 @@ public class KworkResponseMapper {
         entity.setCategoryId(parseLong(node.path("category_id"), page, node));
         entity.setMaxDays(parseInteger(node.path("max_days"), page, node));
         entity.setDateCreate(parseDateTime(node.path("date_create"), page, node));
+        entity.setDateActive(parseDateTime(node.path("date_active"), page, node));
         entity.setUsername(user.path("username").asText(null));
         entity.setUserProfileUrl(node.path("wantUserGetProfileUrl").asText(null));
         entity.setKworkCount(node.path("kwork_count").asInt());

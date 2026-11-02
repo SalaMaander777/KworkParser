@@ -42,6 +42,16 @@ public class KworkEntity {
     private boolean active = true;
     @Column(name = "closed_at", columnDefinition = "timestamptz", insertable = false, updatable = false)
     private Instant closedAt;
+    /** Время публикации заказа на бирже по данным сайта (МСК, без пояса); меняется, когда заказчик поднимает заказ. */
+    @Column(name = "date_active", columnDefinition = "timestamp")
+    private LocalDateTime dateActive;
+    /**
+     * Когда заказ «появился» для рассылки: первое появление у парсера или момент, когда изменился date_active.
+     * По нему бот выбирает новые заказы: id не годится, т.к. заказы публикуются после модерации не по порядку id
+     * и старые заказы поднимаются заново.
+     */
+    @Column(name = "activated_at", columnDefinition = "timestamptz default now()", insertable = false, updatable = false)
+    private Instant activatedAt;
 
     public KworkEntity(){
 
@@ -141,6 +151,18 @@ public class KworkEntity {
 
     public Instant getClosedAt() {
         return closedAt;
+    }
+
+    public LocalDateTime getDateActive() {
+        return dateActive;
+    }
+
+    public void setDateActive(LocalDateTime dateActive) {
+        this.dateActive = dateActive;
+    }
+
+    public Instant getActivatedAt() {
+        return activatedAt;
     }
 
     @Override

@@ -20,8 +20,8 @@ public class KworkRepository {
     private static final String UPSERT = """
             INSERT INTO kwork (kwork_order_id, kwork_name, kwork_description, kwork_price_limit, category_id,
                                max_days, creation_date, username, user_profile, kwork_count,
-                               first_seen_at, last_seen_at, is_active, closed_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now(), now(), true, NULL)
+                               date_active, first_seen_at, last_seen_at, activated_at, is_active, closed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now(), now(), now(), true, NULL)
             ON CONFLICT (kwork_order_id) DO UPDATE SET
                 kwork_name = EXCLUDED.kwork_name,
                 kwork_description = EXCLUDED.kwork_description,
@@ -32,6 +32,13 @@ public class KworkRepository {
                 username = EXCLUDED.username,
                 user_profile = EXCLUDED.user_profile,
                 kwork_count = EXCLUDED.kwork_count,
+                -- заказ «появился заново» (поднят заказчиком), если дата публикации на сайте изменилась.
+                -- Пустое значение (нет в ответе или не разобрали) и первое заполнение колонки не считаются поднятием.
+                activated_at = CASE
+                    WHEN EXCLUDED.date_active IS NULL OR kwork.date_active IS NULL
+                         OR kwork.date_active = EXCLUDED.date_active THEN kwork.activated_at
+                    ELSE now() END,
+                date_active = COALESCE(EXCLUDED.date_active, kwork.date_active),
                 last_seen_at = now(),
                 is_active = true,
                 closed_at = NULL
@@ -66,6 +73,7 @@ public class KworkRepository {
                     ps.setString(8, k.getUsername());
                     ps.setString(9, k.getUserProfileUrl());
                     ps.setInt(10, k.getKworkCount());
+                    ps.setTimestamp(11, k.getDateActive() == null ? null : Timestamp.valueOf(k.getDateActive()));
                     ps.addBatch();
                     if (++n % BATCH_SIZE == 0) {
                         ps.executeBatch();
