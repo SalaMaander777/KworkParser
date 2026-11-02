@@ -30,6 +30,18 @@ public class KworkEntity {
     @Column(name = "kwork_count")
     private int kworkCount;
 
+    // Служебные поля жизненного цикла заказа. Пишутся только SQL-upsert'ом в KworkRepository
+    // (значения now() берутся с часов БД), поэтому Hibernate их не вставляет и не обновляет.
+    @Column(name = "first_seen_at", columnDefinition = "timestamp default now()", insertable = false, updatable = false)
+    private LocalDateTime firstSeenAt;
+    @Column(name = "last_seen_at", columnDefinition = "timestamp default now()", insertable = false, updatable = false)
+    private LocalDateTime lastSeenAt;
+    /** false — заказ пропал с сайта; бот такие заказы не рассылает. */
+    @Column(name = "is_active", nullable = false, columnDefinition = "boolean not null default true", insertable = false, updatable = false)
+    private boolean active = true;
+    @Column(name = "closed_at", insertable = false, updatable = false)
+    private LocalDateTime closedAt;
+
     public KworkEntity(){
 
     }
@@ -112,6 +124,22 @@ public class KworkEntity {
 
     public void setKworkCount(int kworkCount) {
         this.kworkCount = kworkCount;
+    }
+
+    public LocalDateTime getFirstSeenAt() {
+        return firstSeenAt;
+    }
+
+    public LocalDateTime getLastSeenAt() {
+        return lastSeenAt;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public LocalDateTime getClosedAt() {
+        return closedAt;
     }
 
     @Override

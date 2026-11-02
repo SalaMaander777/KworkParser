@@ -36,7 +36,7 @@ public class Main {
         log.info("Запуск по расписанию: каждые {} мин.", intervalMinutes);
         scheduler.scheduleWithFixedDelay(() -> {
             try {
-                service.fetchAllKworks();
+                service.sync();
             } catch (Exception e) {
                 // исключение, вылетевшее из задачи, остановило бы все последующие запуски
                 log.error("Сбой при обходе каталога, следующая попытка по расписанию", e);

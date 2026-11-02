@@ -59,6 +59,11 @@ public class KworkResponseMapper {
 
         List<KworkEntity> kworks = new ArrayList<>();
         for (JsonNode node : wantsArray) {
+            // без id (asLong() дал бы 0) или названия это не заказ, а мусор в ответе — в базу не пускаем
+            if (node.path("id").asLong() <= 0 || node.path("name").asText("").isBlank()) {
+                log.warn("Страница {}: пропущен элемент без id/названия", requestedPage);
+                continue;
+            }
             kworks.add(toEntity(node, requestedPage));
         }
 
